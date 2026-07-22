@@ -100,7 +100,9 @@ syncextpack_website/
 
 ## License
 
-This project is open-source and strictly non-commercial. See the disclaimer on the [live site](https://sync.dpdns.org) for details.
+This project is licensed under the [MIT License](LICENSE).
+
+Note: The project is open-source and non-commercial in intent. See the disclaimer on the [live site](https://sync.dpdns.org) for usage terms.
 
 ## Credits
 
