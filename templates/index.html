@@ -1,0 +1,769 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SyncExtPack Online Builder</title>
+<script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+<style>
+:root {
+  --green: #4CAF50;
+  --green-d: #45a049;
+  --blue: #2196F3;
+  --blue-d: #1976D2;
+  --red: #f44336;
+  --orange: #ff9800;
+  --gray: #999;
+  --bg: #f5f5f5;
+  --border: #ddd;
+  --text: #333;
+  --text-light: #666;
+}
+* { box-sizing: border-box; }
+body { font-family: Arial, sans-serif; max-width: 760px; margin: 0 auto; padding: 20px; color: var(--text); line-height: 1.5; }
+h1 { font-size: 1.5em; margin: 0 0 5px; }
+h2 { font-size: 1.05em; margin: 0 0 10px; }
+h3 { font-size: 0.95em; margin: 15px 0 8px; color: var(--text-light); }
+p { margin: 8px 0; }
+code { background: #eee; padding: 2px 5px; border-radius: 3px; font-size: 0.9em; }
+pre { background: var(--bg); padding: 10px; border-radius: 3px; font-size: 0.85em; overflow-x: auto; }
+
+/* ── Language ───────────────────────────────────────────── */
+.lang-toggle { float: right; }
+.lang-toggle button { padding: 3px 0; font-size: 0.8em; width: 52px; text-align: center; cursor: pointer; }
+.lang-toggle button.active { background: #333; color: #fff; border: 1px solid #333; }
+body.lang-en .t-cn { display: none; }
+body.lang-cn .t-en { display: none; }
+
+/* ── Tabs ───────────────────────────────────────────────── */
+.tabs { display: flex; border-bottom: 2px solid var(--border); margin: 15px 0 20px; }
+.tab { padding: 8px 20px; cursor: pointer; border: none; background: none; font-size: 0.95em; color: #666; border-bottom: 3px solid transparent; margin-bottom: -2px; }
+.tab.active { color: var(--text); border-bottom-color: var(--green); font-weight: bold; }
+.tab:hover { color: var(--text); }
+.tab-content { display: none; }
+.tab-content.active { display: block; }
+
+/* ── Card sections ──────────────────────────────────────── */
+.card { border: 1px solid var(--border); border-radius: 6px; padding: 18px; margin-bottom: 16px; background: #fff; }
+.card-label { font-size: 0.8em; font-weight: bold; text-transform: uppercase; color: var(--blue); letter-spacing: 0.5px; margin-bottom: 10px; }
+
+/* ── Serial input ───────────────────────────────────────── */
+input[type="text"] { width: 220px; padding: 8px 10px; font-size: 15px; border: 1px solid var(--border); border-radius: 4px; }
+input[type="text"]:focus { outline: none; border-color: var(--blue); }
+.field-hint { font-size: 0.8em; color: var(--text-light); margin-top: 5px; }
+
+/* ── App selection ──────────────────────────────────────── */
+.app-cat { margin-bottom: 14px; }
+.app-cat:last-child { margin-bottom: 0; }
+.app-cat-title { font-size: 0.85em; font-weight: bold; color: var(--text-light); margin-bottom: 6px; padding-bottom: 4px; border-bottom: 1px solid var(--bg); }
+.app-row { display: flex; align-items: flex-start; padding: 6px 0; }
+.app-row input[type="checkbox"] { margin: 3px 8px 0 0; flex-shrink: 0; cursor: pointer; }
+.app-row label { margin: 0; cursor: pointer; flex-shrink: 0; }
+.app-desc { color: var(--text-light); font-size: 0.82em; margin-left: 8px; }
+.mutex-note { color: #e65100; font-size: 0.78em; margin-left: 6px; }
+.app-counter { font-size: 0.8em; color: var(--text-light); margin-left: 8px; }
+.app-counter.has { color: var(--green); font-weight: bold; }
+.app-row { flex-wrap: wrap; }
+.app-row-main { flex: 1 1 auto; }
+.app-name { font-weight: bold; }
+.lang-options { display: flex; gap: 12px; margin-left: 24px; margin-top: 4px; }
+.lang-opt { display: inline-flex; align-items: center; gap: 3px; cursor: pointer; font-size: 0.85em; color: var(--text-light); padding: 3px 10px; border: 1px solid var(--border); border-radius: 4px; }
+.lang-opt:hover { background: var(--bg); }
+.lang-opt input { margin: 0; cursor: pointer; }
+
+/* ── Build action ───────────────────────────────────────── */
+.build-bar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.btn-build { padding: 10px 28px; font-size: 1em; cursor: pointer; background: var(--green); color: #fff; border: none; border-radius: 4px; }
+.btn-build:hover { background: var(--green-d); }
+.btn-build:disabled { background: var(--gray); cursor: not-allowed; }
+.btn-again { padding: 8px 20px; font-size: 0.9em; cursor: pointer; background: #fff; color: var(--text); border: 1px solid var(--border); border-radius: 4px; }
+.btn-again:hover { background: var(--bg); }
+
+/* ── Error ──────────────────────────────────────────────── */
+.error-msg { color: var(--red); font-size: 0.88em; margin-top: 10px; display: none; }
+
+/* ── Build status ───────────────────────────────────────── */
+#status-area { display: none; }
+.progress-steps { display: flex; gap: 0; margin-bottom: 16px; }
+.progress-step { flex: 1; text-align: center; padding: 10px 4px; font-size: 0.78em; color: var(--gray); border-top: 3px solid var(--border); }
+.progress-step.active { color: var(--text); border-top-color: var(--blue); font-weight: bold; }
+.progress-step.done { color: var(--green); border-top-color: var(--green); }
+.progress-step.failed { color: var(--red); border-top-color: var(--red); }
+.step-icon { font-size: 1.4em; display: block; margin-bottom: 3px; }
+
+.status-banner { padding: 12px 15px; border-radius: 4px; margin-bottom: 12px; font-size: 0.92em; display: none; }
+.status-banner.building { background: #e3f2fd; color: #1565c0; display: block; }
+.status-banner.done { background: #e8f5e9; color: #2e7d32; display: block; }
+.status-banner.failed { background: #ffebee; color: #c62828; display: block; }
+.spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid #90caf9; border-top-color: #1565c0; border-radius: 50%; animation: spin 0.8s linear infinite; vertical-align: middle; margin-right: 8px; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── Action bar (horizontal buttons) ──────────────────── */
+.action-bar { display: flex; gap: 10px; align-items: center; margin: 14px 0 8px; flex-wrap: wrap; }
+.btn-download { display: inline-block; padding: 10px 25px; background: var(--blue); color: #fff; text-decoration: none; border-radius: 4px; font-size: 1.05em; }
+.btn-download:hover { background: var(--blue-d); }
+.btn-again { padding: 10px 20px; font-size: 0.95em; cursor: pointer; background: #fff; color: var(--text); border: 1px solid var(--border); border-radius: 4px; }
+.btn-again:hover { background: var(--bg); }
+.btn-log { padding: 8px 16px; font-size: 0.85em; cursor: pointer; background: #fff; color: var(--text-light); border: 1px solid var(--border); border-radius: 4px; }
+.btn-log:hover { background: var(--bg); color: var(--text); }
+#log-area { white-space: pre-wrap; font-family: monospace; font-size: 0.78em; max-height: 250px; overflow-y: auto; background: #fff; padding: 10px; border: 1px solid var(--border); border-radius: 4px; display: none; }
+
+/* ── Resources ──────────────────────────────────────────── */
+.res-table { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 0.88em; }
+.res-table th { text-align: left; padding: 8px 10px; background: var(--bg); border-bottom: 2px solid var(--border); font-size: 0.85em; }
+.res-table td { padding: 8px 10px; border-bottom: 1px solid var(--border); vertical-align: top; }
+.res-table tr:last-child td { border-bottom: none; }
+.res-name { font-weight: bold; word-break: break-all; }
+.res-link { color: var(--blue); text-decoration: none; }
+.res-link:hover { text-decoration: underline; }
+
+/* ── Guide images ──────────────────────────────────────── */
+.guide-img { max-width: 100%; border: 1px solid var(--border); border-radius: 4px; margin: 10px 0; display: block; }
+.guide-img-cap { font-size: 0.8em; color: var(--text-light); text-align: center; margin-bottom: 14px; }
+
+/* ── Guide ──────────────────────────────────────────────── */
+.guide { background: #f9f9f9; padding: 15px; border-left: 3px solid var(--blue); margin: 10px 0; }
+.guide ol { padding-left: 20px; }
+.guide li { margin: 8px 0; }
+.warn { background: #fff3e0; padding: 10px; border-left: 3px solid var(--orange); margin: 10px 0; font-size: 0.9em; }
+
+/* ── Disclaimer modal ──────────────────────────────────── */
+.modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 9999; }
+.modal-box { background: #fff; border-radius: 8px; padding: 24px 28px; max-width: 520px; width: 90%; box-shadow: 0 4px 20px rgba(0,0,0,0.15); }
+.modal-box h2 { font-size: 1.1em; margin: 0 0 14px; color: var(--text); }
+.modal-box ol { padding-left: 20px; margin: 0 0 18px; }
+.modal-box ol li { margin: 8px 0; font-size: 0.9em; line-height: 1.5; }
+.modal-box .modal-btn { display: block; width: 100%; padding: 10px; font-size: 0.95em; cursor: pointer; background: var(--green); color: #fff; border: none; border-radius: 4px; }
+.modal-box .modal-btn:hover { background: var(--green-d); }
+
+/* ── GitHub icon ────────────────────────────────────────── */
+.github-link { float: right; margin-left: 8px; display: inline-flex; align-items: center; }
+.github-link svg { width: 20px; height: 20px; fill: #333; }
+.github-link:hover svg { fill: #000; }
+</style>
+</head>
+<body class="lang-en">
+
+<div class="lang-toggle">
+  <a class="github-link" href="https://github.com/sectlying/syncextpack-online-builder" target="_blank" title="GitHub">
+    <svg viewBox="0 0 16 16"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg>
+  </a>
+  <button id="btn-en" class="active" onclick="setLang('en')">EN</button>
+  <button id="btn-cn" onclick="setLang('cn')">中文</button>
+</div>
+
+<h1><span class="t-en">SyncExtPack Online Builder</span><span class="t-cn">SyncExtPack 在线构建工具</span></h1>
+<!-- ── Disclaimer modal ── -->
+<div id="disclaimer-modal" class="modal-overlay" style="display:none">
+  <div class="modal-box">
+    <h2><span class="t-en">Disclaimer &amp; Notice</span><span class="t-cn">免责声明</span></h2>
+    <ol>
+      <li><span class="t-en">This tool modifies your vehicle's infotainment system. Any damage or malfunction resulting from its use is your sole responsibility. Proceed at your own risk.</span><span class="t-cn">本工具会修改车辆信息娱乐系统。因使用本工具导致的任何设备损坏或功能异常，由使用者自行承担全部责任。</span></li>
+      <li><span class="t-en">This project is open-source and strictly non-commercial. Unauthorized resale or commercial exploitation is prohibited. Violators bear all legal consequences.</span><span class="t-cn">本项目为开源非商业项目，严禁任何形式的商业用途或倒卖。违者自行承担一切法律责任。</span></li>
+      <li><span class="t-en">All trademarks and copyrights belong to their respective owners. If this project infringes upon your rights, please contact the author for prompt removal.</span><span class="t-cn">所有商标及版权版权归各自所有者所有。如本项目侵犯了您的合法权益，请联系作者，我们将及时删除。</span></li>
+    </ol>
+    <button class="modal-btn" onclick="closeDisclaimer()">
+      <span class="t-en">I Understand &amp; Agree</span><span class="t-cn">我已阅读并同意</span>
+    </button>
+  </div>
+</div>
+
+<div class="tabs">
+  <button class="tab active" onclick="switchTab(this, 'build')">
+    <span class="t-en">Build</span><span class="t-cn">构建</span>
+  </button>
+  <button class="tab" onclick="switchTab(this, 'guide')">
+    <span class="t-en">Installation Guide</span><span class="t-cn">安装指南</span>
+  </button>
+  <button class="tab" onclick="switchTab(this, 'resources')">
+    <span class="t-en">Resources</span><span class="t-cn">相关资料</span>
+  </button>
+</div>
+
+<!-- ════════════════ BUILD TAB ════════════════ -->
+<div id="tab-build" class="tab-content active">
+
+  <!-- ── Configuration ── -->
+  <div id="config-area">
+
+    <div class="card">
+      <div class="card-label">1. <span class="t-en">APIM Serial Number</span><span class="t-cn">APIM 序列号</span></div>
+      <input type="text" id="serial" maxlength="8" placeholder="VH71AB2C" oninput="this.value=this.value.toUpperCase().replace(/[^A-Z0-9]/g,'')">
+      <div class="field-hint">
+        <span class="t-en">Menu &rarr; Settings &rarr; General &rarr; About SYNC</span>
+        <span class="t-cn">菜单 &rarr; 设置 &rarr; 通用 &rarr; 关于 SYNC</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-label">2. <span class="t-en">Select Apps</span><span class="t-cn">选择应用</span>
+        <span class="app-counter" id="app-counter"></span>
+      </div>
+
+      <div class="app-cat">
+        <div class="app-cat-title"><span class="t-en">Navigation</span><span class="t-cn">导航</span></div>
+        <div class="app-row">
+          <div class="app-row-main">
+            <span class="app-name">Navitel</span>
+            <span class="app-desc" style="margin-left:8px"><span class="t-en">Offline GPS navigation with turn-by-turn directions</span><span class="t-cn">离线 GPS 导航，支持转弯指引</span></span>
+          </div>
+          <div class="lang-options">
+            <label class="lang-opt"><input type="checkbox" name="app" value="Navitel"> <span class="t-en">Multi</span><span class="t-cn">多语言</span></label>
+          </div>
+        </div>
+      </div>
+
+      <div class="app-cat">
+        <div class="app-cat-title"><span class="t-en">Media &amp; Screen Mirroring</span><span class="t-cn">媒体与投屏</span></div>
+        <div class="app-row">
+          <div class="app-row-main">
+            <span class="app-name">AutoKit</span>
+            <span class="app-desc" style="margin-left:8px"><span class="t-en">CarPlay &amp; Android Auto wireless box adapter</span><span class="t-cn">CarPlay 和 Android Auto 无线盒子适配器</span></span>
+          </div>
+          <div class="lang-options">
+            <label class="lang-opt"><input type="checkbox" name="app" value="AutoKit"> CN</label>
+          </div>
+        </div>
+        <div class="app-row">
+          <div class="app-row-main">
+            <span class="app-name">MirrorLink</span>
+            <span class="app-desc" style="margin-left:8px"><span class="t-en">Phone mirroring via EasyConnected</span><span class="t-cn">通过 EasyConnected 手机投屏</span></span>
+          </div>
+          <div class="lang-options">
+            <label class="lang-opt"><input type="checkbox" name="app" value="MirrorLink_EN_NEW" onclick="checkMutex(this)"> EN</label>
+            <label class="lang-opt"><input type="checkbox" name="app" value="MirrorLink_NEW" onclick="checkMutex(this)"> RU</label>
+          </div>
+        </div>
+        <div class="app-row">
+          <div class="app-row-main">
+            <span class="app-name">Video Player</span>
+            <span class="app-desc" style="margin-left:8px"><span class="t-en">H.264/MPEG/WMV/DivX/MP3/AAC/FLAC</span><span class="t-cn">H.264/MPEG/WMV/DivX/MP3/AAC/FLAC 等格式</span></span>
+          </div>
+          <div class="lang-options">
+            <label class="lang-opt"><input type="checkbox" name="app" value="Player_EN" onclick="checkMutex(this)"> EN</label>
+            <label class="lang-opt"><input type="checkbox" name="app" value="Player" onclick="checkMutex(this)"> RU</label>
+          </div>
+        </div>
+      </div>
+
+      <div class="app-cat">
+        <div class="app-cat-title"><span class="t-en">Utilities</span><span class="t-cn">工具</span></div>
+        <div class="app-row">
+          <div class="app-row-main">
+            <span class="app-name">Explorer</span>
+            <span class="app-desc" style="margin-left:8px"><span class="t-en">Total Commander with OBEX file transfer</span><span class="t-cn">Total Commander 文件管理器，支持 OBEX 传输</span></span>
+          </div>
+          <div class="lang-options">
+            <label class="lang-opt"><input type="checkbox" name="app" value="Explorer"> <span class="t-en">Multi</span><span class="t-cn">多语言</span></label>
+          </div>
+        </div>
+        <div class="app-row">
+          <div class="app-row-main">
+            <span class="app-name"><span class="t-en">Reboot Button</span><span class="t-cn">重启按钮</span></span>
+            <span class="app-desc" style="margin-left:8px"><span class="t-en">Add a reboot button to the SYNC apps menu</span><span class="t-cn">在 SYNC 应用菜单中添加重启按钮</span></span>
+          </div>
+          <div class="lang-options">
+            <label class="lang-opt"><input type="checkbox" name="app" value="Reboot"> EN</label>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-label">3. <span class="t-en">Verify &amp; Build</span><span class="t-cn">验证并构建</span></div>
+      <div class="cf-turnstile" data-sitekey="{{ turnstile_site_key }}" data-action="turnstile-spin-v2" style="margin-bottom:12px"></div>
+      <div class="build-bar">
+        <button class="btn-build" id="build-btn" onclick="startBuild()">
+          <span class="t-en">Build Package</span><span class="t-cn">构建安装包</span>
+        </button>
+      </div>
+      <div id="error-msg" class="error-msg"></div>
+    </div>
+
+  </div>
+
+  <!-- ── Build Status (replaces config during/after build) ── -->
+  <div id="status-area">
+    <div class="progress-steps">
+      <div class="progress-step" id="step1">
+        <span class="step-icon">&#x2022;</span>
+        <span class="t-en">Install Pack</span><span class="t-cn">安装包</span>
+      </div>
+      <div class="progress-step" id="step2">
+        <span class="step-icon">&#x2022;</span>
+        <span class="t-en">Update Service</span><span class="t-cn">更新服务</span>
+      </div>
+      <div class="progress-step" id="step3">
+        <span class="step-icon">&#x2022;</span>
+        <span class="t-en">Installer</span><span class="t-cn">安装器</span>
+      </div>
+      <div class="progress-step" id="step4">
+        <span class="step-icon">&#x2022;</span>
+        <span class="t-en">Archive</span><span class="t-cn">打包</span>
+      </div>
+    </div>
+    <div class="status-banner" id="status-banner"></div>
+    <div class="action-bar" id="action-bar" style="display:none">
+      <a class="btn-download" id="download-link" href="#" style="display:none">
+        <span class="t-en">Download ZIP</span><span class="t-cn">下载 ZIP</span>
+      </a>
+      <button class="btn-again" id="again-btn" style="display:none" onclick="resetToConfig()">
+        <span class="t-en">Build Another</span><span class="t-cn">再构建一个</span>
+      </button>
+      <button class="btn-log" id="log-toggle" onclick="toggleLog()">
+        <span class="t-en">Show Log</span><span class="t-cn">显示日志</span>
+      </button>
+    </div>
+    <div id="log-area"></div>
+  </div>
+
+</div>
+
+<!-- ════════════════ GUIDE TAB ════════════════ -->
+<div id="tab-guide" class="tab-content">
+
+  <div class="warn">
+    <strong><span class="t-en">Important:</span><span class="t-cn">重要提示：</span></strong>
+    <span class="t-en">Before installing SyncExtPack, upgrade your Ford SYNC 2 to firmware version 3.10 (build 16180). See the Resources tab for download links.</span>
+    <span class="t-cn">安装 SyncExtPack 前，请先将 Ford SYNC 2 升级到固件版本 3.10（构建 16180）。下载链接见"相关资料"页。</span>
+  </div>
+
+  <h3><span class="t-en">Requirements</span><span class="t-cn">前提条件</span></h3>
+  <ul>
+    <li><span class="t-en">USB Drive: USB 2.0, max 32GB, formatted as FAT32 (MBR partition table)</span>
+        <span class="t-cn">U 盘：USB 2.0，最大 32GB，格式化为 FAT32（MBR 分区表）</span></li>
+    <li><span class="t-en">Your APIM Serial Number (8 characters, found in SYNC system info)</span>
+        <span class="t-cn">您的 APIM 序列号（8 位字符，在 SYNC 系统信息中查看）</span></li>
+    <li><span class="t-en">Ford SYNC 2 firmware version 3.10 or later</span>
+        <span class="t-cn">Ford SYNC 2 固件版本 3.10 或更高</span></li>
+  </ul>
+
+  <div class="guide">
+  <ol>
+    <li>
+      <strong><span class="t-en">Get APIM Serial Number</span><span class="t-cn">获取 APIM 序列号</span></strong>
+      <p><span class="t-en">On your SYNC 2 screen: Menu &rarr; Settings &rarr; General &rarr; About SYNC. The serial is an 8-character alphanumeric string (e.g. <code>VH71AB2C</code>). Note: the letter <code>O</code> is never used.</span>
+      <span class="t-cn">在 SYNC 2 屏幕上：菜单 &rarr; 设置 &rarr; 通用 &rarr; 关于 SYNC。序列号为 8 位字母数字组合（如 <code>VH71AB2C</code>）。注意：序列号中不使用字母 <code>O</code>。</span></p>
+    </li>
+    <li>
+      <strong><span class="t-en">Build Package</span><span class="t-cn">构建安装包</span></strong>
+      <p><span class="t-en">Go to the Build tab on this website, enter your APIM serial number, select the apps you want, complete the CAPTCHA, and click Build Package. When the build completes, the ZIP file will download automatically.</span>
+      <span class="t-cn">切换到本网站的"构建"页，输入 APIM 序列号，选择所需应用，完成人机验证后点击"构建安装包"。构建完成后 ZIP 文件将自动下载。</span></p>
+    </li>
+    <li>
+      <strong><span class="t-en">Prepare USB Drive</span><span class="t-cn">准备 U 盘</span></strong>
+      <p><span class="t-en">Format the USB drive as FAT32 with MBR partition table. Extract the downloaded ZIP file to the root of the USB drive. You should see the following structure:</span>
+      <span class="t-cn">将 U 盘格式化为 FAT32（MBR 分区表）。将下载的 ZIP 文件解压到 U 盘根目录，应看到以下结构：</span></p>
+      <pre>USB Drive
+└── SyncExtPack/
+    ├── Installer.jpg
+    ├── pack_install.bin
+    ├── update.bin
+    └── UpdateInstaller.dll</pre>
+      <img class="guide-img" src="/static/guide/usb_root.jpg" alt="USB root folder">
+      <img class="guide-img" src="/static/guide/usb_files.jpg" alt="SyncExtPack folder contents">
+      <div class="guide-img-cap"><span class="t-en">USB drive root (left) and SyncExtPack folder contents (right)</span><span class="t-cn">U 盘根目录（左）与 SyncExtPack 文件夹内容（右）</span></div>
+    </li>
+    <li>
+      <strong><span class="t-en">Trigger Installer via Wallpaper Menu</span><span class="t-cn">通过壁纸菜单触发安装器</span></strong>
+      <p><span class="t-en">Start your vehicle and wait for SYNC 2 to fully boot. Remove all other USB devices, then insert the prepared USB drive. Navigate to: Settings &rarr; Display &rarr; Edit Wallpaper. A format notice will appear — press OK.</span>
+      <span class="t-cn">启动车辆，等待 SYNC 2 完全启动。拔除所有其他 USB 设备，插入准备好的 U 盘。进入：设置 &rarr; 显示 &rarr; 编辑壁纸。弹出格式提示框后按 OK。</span></p>
+      <img class="guide-img" src="/static/guide/display_settings.jpg" alt="Display settings - Edit wallpaper">
+      <img class="guide-img" src="/static/guide/wallpaper_prompt.jpg" alt="Wallpaper format notice">
+      <img class="guide-img" src="/static/guide/wallpaper_editor.jpg" alt="Wallpaper editor - Add button">
+      <div class="guide-img-cap"><span class="t-en">Display settings &rarr; Edit Wallpaper &rarr; format notice &rarr; Add button</span><span class="t-cn">显示设置 &rarr; 编辑壁纸 &rarr; 格式提示 &rarr; Add 按钮</span></div>
+    </li>
+    <li>
+      <strong><span class="t-en">Select Installer.jpg</span><span class="t-cn">选择 Installer.jpg</span></strong>
+      <p><span class="t-en">Press Add, select USB1 as the source, then browse to the <code>SyncExtPack</code> folder and select <code>Installer.jpg</code>. <strong>Do NOT set it as wallpaper</strong> — just click it once and wait. The system will automatically reboot within about one minute.</span>
+      <span class="t-cn">点击 Add，选择 USB1 作为来源，浏览到 <code>SyncExtPack</code> 文件夹并选择 <code>Installer.jpg</code>。<strong>切勿将其设为壁纸</strong>——只需点击一次并等待。系统通常在一分钟内自动重启。</span></p>
+      <img class="guide-img" src="/static/guide/usb_source.jpg" alt="Select USB1 as source">
+      <img class="guide-img" src="/static/guide/select_installer.jpg" alt="Browse to Installer.jpg">
+      <div class="guide-img-cap"><span class="t-en">Select USB1 &rarr; SyncExtPack &rarr; Installer.jpg</span><span class="t-cn">选择 USB1 &rarr; SyncExtPack &rarr; Installer.jpg</span></div>
+    </li>
+    <li>
+      <strong><span class="t-en">Wait for Reboot</span><span class="t-cn">等待重启</span></strong>
+      <p><span class="t-en">After the system reboots, wait for the Ford logo screen and then the full SYNC 2 boot to complete. Do not remove the USB drive yet.</span>
+      <span class="t-cn">系统重启后，等待福特标志画面和 SYNC 2 完全启动完成。此时不要拔出 U 盘。</span></p>
+      <img class="guide-img" src="/static/guide/ford_logo.jpg" alt="Ford logo boot screen">
+      <img class="guide-img" src="/static/guide/sync_home.jpg" alt="SYNC 2 home screen">
+      <div class="guide-img-cap"><span class="t-en">Ford logo boot screen &rarr; SYNC 2 home screen</span><span class="t-cn">福特标志启动画面 &rarr; SYNC 2 主界面</span></div>
+    </li>
+    <li>
+      <strong><span class="t-en">Rename and Reinsert USB</span><span class="t-cn">重命名文件并重新插入</span></strong>
+      <p><span class="t-en">Now remove the USB drive and connect it to your PC. Open the <code>SyncExtPack</code> folder and rename <code>pack_install.bin</code> to <code>install.bin</code>. Then reinsert the USB drive into the vehicle.</span>
+      <span class="t-cn">现在拔出 U 盘连接到电脑。打开 <code>SyncExtPack</code> 文件夹，将 <code>pack_install.bin</code> 重命名为 <code>install.bin</code>。然后将 U 盘重新插入车辆。</span></p>
+      <img class="guide-img" src="/static/guide/rename_file.jpg" alt="Rename pack_install.bin to install.bin">
+      <img class="guide-img" src="/static/guide/update_info.jpg" alt="Update Installer info screen">
+      <img class="guide-img" src="/static/guide/install_progress.jpg" alt="Installation progress">
+      <div class="guide-img-cap"><span class="t-en">Rename pack_install.bin &rarr; install.bin, then installation starts automatically</span><span class="t-cn">重命名 pack_install.bin &rarr; install.bin，安装自动开始</span></div>
+    </li>
+    <li>
+      <strong><span class="t-en">Installation Completes</span><span class="t-cn">安装完成</span></strong>
+      <p><span class="t-en">The Update Installer window will appear and show progress. When installation finishes, the window will close automatically or the system will reboot. After full boot, remove the USB drive.</span>
+      <span class="t-cn">Update Installer 窗口将弹出并显示进度。安装完成后，窗口将自动关闭或系统将重启。完全启动后，拔出 U 盘。</span></p>
+    </li>
+    <li>
+      <strong><span class="t-en">Verify Installation</span><span class="t-cn">验证安装</span></strong>
+      <p><span class="t-en">Wait for SYNC 2 to fully boot. Press the <code>i</code> button &rarr; Apps. Check that your newly installed apps appear in the list.</span>
+      <span class="t-cn">等待 SYNC 2 完全启动。按 <code>i</code> 按钮 &rarr; 应用。检查新安装的应用是否出现在列表中。</span></p>
+    </li>
+  </ol>
+  </div>
+
+  <div class="warn">
+    <strong><span class="t-en">Troubleshooting:</span><span class="t-cn">故障排除：</span></strong>
+    <span class="t-en">If the system enters a boot loop after selecting Installer.jpg, remove the USB drive and wait — the system should recover. If installation fails, try a different USB drive or reformat as FAT32 MBR. For community support, visit the <a class="res-link" href="https://xdaforums.com/t/ford-sync-2-mirrorlink-navitel-video-player.3957066" target="_blank">XDA forum thread</a>.</span>
+    <span class="t-cn">如果选择 Installer.jpg 后系统进入无限重启，请拔出 U 盘并等待——系统应能自行恢复。如果安装失败，请更换 U 盘或重新格式化为 FAT32 MBR。如需社区帮助，请访问 <a class="res-link" href="https://xdaforums.com/t/ford-sync-2-mirrorlink-navitel-video-player.3957066" target="_blank">XDA 论坛帖子</a>。</span>
+  </div>
+
+</div>
+
+<!-- ════════════════ RESOURCES TAB ════════════════ -->
+<div id="tab-resources" class="tab-content">
+
+  <h3><span class="t-en">Firmware &amp; Tools</span><span class="t-cn">固件与工具</span></h3>
+  <p style="font-size:0.85em;color:var(--text-light)">
+    <span class="t-en">Download the following files from their respective forum threads.</span>
+    <span class="t-cn">从以下论坛帖子中下载对应文件。</span>
+  </p>
+
+  <table class="res-table">
+    <thead>
+      <tr>
+        <th><span class="t-en">File</span><span class="t-cn">文件</span></th>
+        <th><span class="t-en">Purpose</span><span class="t-cn">用途</span></th>
+        <th><span class="t-en">Source</span><span class="t-cn">来源</span></th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td class="res-name"><a class="res-link" href="https://mega.nz/#!cc4HSKwa!2evt2tQmfe8deCfyHZgsfCkkkB77lp5r5o_yra9Y31A?utm_source=FordOwnersClub&utm_medium=ForumLinks&utm_campaign=referrals" target="_blank">Gen2v310build16180updatepackageEULangpack5.zip</a></td>
+        <td><span class="t-en">Upgrade SYNC 2 to firmware 3.10 (build 16180)</span><span class="t-cn">升级 SYNC 2 到固件 3.10（构建 16180）</span></td>
+        <td><a class="res-link" href="https://focusstoc.com" target="_blank">focusstoc.com</a></td>
+      </tr>
+      <tr>
+        <td class="res-name"><a class="res-link" href="https://mega.nz/#!dUwRmahA!i9Bc5LkPCNZC1amgYalD4Yrbgs0lYhOco0hiQAfmmeM" target="_blank">Sync2 Downgrade 3.10 16180 to 3.08 15128EU.zip</a></td>
+        <td><span class="t-en">Roll back SYNC 2 from 3.10 to 3.08 (build 15128)</span><span class="t-cn">将 SYNC 2 从 3.10 回滚到 3.08（构建 15128）</span></td>
+        <td><a class="res-link" href="https://focusstoc.com" target="_blank">focusstoc.com</a></td>
+      </tr>
+      <tr>
+        <td class="res-name"><a class="res-link" href="https://mega.nz/file/ksoigLbZ#dBfksY5mfDc_dLX4kPQM-q4IpU1MwJDlMyU2uvMyjjE" target="_blank">syncextpack_builder_public.zip</a></td>
+        <td><span class="t-en">Original SyncExtPack builder tool (run locally)</span><span class="t-cn">原始 SyncExtPack 构建工具（本地运行）</span></td>
+        <td><a class="res-link" href="https://xdaforums.com/t/ford-sync-2-mirrorlink-navitel-video-player.3957066" target="_blank">xdaforums.com</a></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="warn">
+    <strong><span class="t-en">Note:</span><span class="t-cn">注意：</span></strong>
+    <span class="t-en">Links point to external Mega downloads. Always verify file integrity before use.</span>
+    <span class="t-cn">链接指向外部 Mega 下载。使用前请务必验证文件完整性。</span>
+  </div>
+
+</div>
+
+<script>
+var pollTimer = null;
+
+/* ── Browser language detection ─────────────────────────── */
+
+(function() {
+  var lang = 'en';
+  try {
+    var bl = (navigator.language || navigator.userLanguage || 'en').toLowerCase();
+    if (bl.indexOf('zh') === 0) lang = 'cn';
+  } catch(e) {}
+  // Respect saved language preference if set
+  try {
+    var saved = localStorage.getItem('syncextpack_lang');
+    if (saved === 'en' || saved === 'cn') lang = saved;
+  } catch(e) {}
+  currentLang = lang;
+})();
+
+/* ── Disclaimer (multilingual) ──────────────────────────── */
+
+var DISCLAIMER_KEY = 'syncextpack_disclaimer_v1';
+var DISCLAIMER_TEXTS = {
+  en: '1.This tool modifies your vehicle infotainment system. Any damage or malfunction resulting from its use is your sole responsibility. 2.This project is open-source and strictly non-commercial. Unauthorized resale or commercial exploitation is prohibited. 3.All trademarks and copyrights belong to their respective owners. If this project infringes upon your rights, please contact the author for prompt removal.',
+  cn: '1.本工具会修改车辆信息娱乐系统。因使用本工具导致的任何设备损坏或功能异常，由使用者自行承担全部责任。 2.本项目为开源非商业项目，严禁任何形式的商业用途或倒卖。 3.所有商标及版权归各自所有者所有。如本项目侵犯了您的合法权益，请联系作者，我们将及时删除。'
+};
+
+(function() {
+  var saved = '';
+  try { saved = localStorage.getItem(DISCLAIMER_KEY) || ''; } catch(e) {}
+  // Show if user hasn't agreed to the current language version
+  if (saved !== DISCLAIMER_TEXTS.en && saved !== DISCLAIMER_TEXTS.cn) {
+    document.getElementById('disclaimer-modal').style.display = 'flex';
+  }
+})();
+
+function closeDisclaimer() {
+  try { localStorage.setItem(DISCLAIMER_KEY, DISCLAIMER_TEXTS[currentLang]); } catch(e) {}
+  document.getElementById('disclaimer-modal').style.display = 'none';
+}
+
+/* ── Helpers ────────────────────────────────────────────── */
+
+function t(en, cn) { return currentLang === 'cn' ? cn : en; }
+
+function $(id) { return document.getElementById(id); }
+
+/* ── Language ───────────────────────────────────────────── */
+
+function setLang(lang) {
+  currentLang = lang;
+  document.body.className = 'lang-' + lang;
+  $('btn-en').classList.toggle('active', lang === 'en');
+  $('btn-cn').classList.toggle('active', lang === 'cn');
+  document.documentElement.lang = lang === 'cn' ? 'zh-CN' : 'en';
+  try { localStorage.setItem('syncextpack_lang', lang); } catch(e) {}
+  updateCounter();
+}
+
+// Apply initial language
+setLang(currentLang);
+
+/* ── Tabs ───────────────────────────────────────────────── */
+
+function switchTab(tabEl, name) {
+  document.querySelectorAll('.tab-content').forEach(function(el) { el.classList.remove('active'); });
+  document.querySelectorAll('.tab').forEach(function(el) { el.classList.remove('active'); });
+  $('tab-' + name).classList.add('active');
+  tabEl.classList.add('active');
+}
+
+/* ── App selection ──────────────────────────────────────── */
+
+var MUTEX_PAIRS = [
+  ['MirrorLink_EN_NEW', 'MirrorLink_NEW'],
+  ['Player_EN', 'Player']
+];
+
+function checkMutex(cb) {
+  if (!cb.checked) return;
+  MUTEX_PAIRS.forEach(function(pair) {
+    if (pair.indexOf(cb.value) >= 0) {
+      var other = pair[0] === cb.value ? pair[1] : pair[0];
+      var otherCb = document.querySelector('input[name="app"][value="' + other + '"]');
+      if (otherCb) otherCb.checked = false;
+    }
+  });
+  updateCounter();
+}
+
+function getSelectedApps() {
+  var apps = [];
+  document.querySelectorAll('input[name="app"]:checked').forEach(function(cb) { apps.push(cb.value); });
+  return apps;
+}
+
+function updateCounter() {
+  var count = getSelectedApps().length;
+  var el = $('app-counter');
+  if (count > 0) {
+    el.textContent = t('(' + count + ' selected)', '(' + count + ' 已选)');
+    el.classList.add('has');
+  } else {
+    el.textContent = '';
+    el.classList.remove('has');
+  }
+}
+
+// Update counter on any checkbox change
+document.addEventListener('change', function(e) {
+  if (e.target.name === 'app') updateCounter();
+});
+
+/* ── Config / Status switching ──────────────────────────── */
+
+function showConfig() {
+  $('config-area').style.display = '';
+  $('status-area').style.display = 'none';
+}
+
+function showStatus() {
+  $('config-area').style.display = 'none';
+  $('status-area').style.display = 'block';
+}
+
+function resetToConfig() {
+  if (pollTimer) clearInterval(pollTimer);
+  showConfig();
+}
+
+/* ── Progress steps ─────────────────────────────────────── */
+
+var STEP_PATTERNS = [/Step 1\/4/, /Step 2\/4/, /Step 3\/4/, /Step 4\/4/];
+
+function resetSteps() {
+  for (var i = 1; i <= 4; i++) {
+    var el = $('step' + i);
+    el.className = 'progress-step';
+    el.querySelector('.step-icon').innerHTML = '&#x2022;';
+  }
+}
+
+function updateSteps(log) {
+  var currentStep = 0, failedStep = 0;
+  log.split('\n').forEach(function(line) {
+    STEP_PATTERNS.forEach(function(re, idx) {
+      if (re.test(line)) {
+        if (/ERROR/.test(line)) { failedStep = idx + 1; }
+        else if (/OK/.test(line)) { currentStep = idx + 1; }
+        else { currentStep = idx; }
+      }
+    });
+  });
+  for (var i = 1; i <= 4; i++) {
+    var el = $('step' + i);
+    var icon = el.querySelector('.step-icon');
+    el.className = 'progress-step';
+    if (failedStep && i === failedStep) {
+      el.classList.add('failed');  icon.innerHTML = '&#x2717;';
+    } else if (i <= currentStep) {
+      el.classList.add('done');    icon.innerHTML = '&#x2713;';
+    } else if (i === currentStep + 1 && !failedStep) {
+      el.classList.add('active');  icon.innerHTML = '&#x25cb;';
+    } else {
+      icon.innerHTML = '&#x2022;';
+    }
+  }
+}
+
+/* ── Banner & log ───────────────────────────────────────── */
+
+function setBanner(type, text) {
+  var b = $('status-banner');
+  b.className = 'status-banner ' + type;
+  b.innerHTML = type === 'building' ? '<span class="spinner"></span>' + text : text;
+}
+
+function showLog(show) {
+  var area = $('log-area');
+  var toggle = $('log-toggle');
+  area.style.display = show ? 'block' : 'none';
+  toggle.innerHTML = show
+    ? '<span class="t-en">Hide Log</span><span class="t-cn">隐藏日志</span>'
+    : '<span class="t-en">Show Log</span><span class="t-cn">显示日志</span>';
+}
+
+function toggleLog() {
+  showLog($('log-area').style.display === 'none');
+}
+
+function showError(msg) { var e = $('error-msg'); e.textContent = msg; e.style.display = 'block'; }
+function hideError() { $('error-msg').style.display = 'none'; }
+
+/* ── Build flow ─────────────────────────────────────────── */
+
+function validateInput(serial, apps) {
+  var token = '';
+  var ts = document.querySelector('[name="cf-turnstile-response"]');
+  if (ts) token = ts.value;
+  if (!token)   return { error: t('Please complete the CAPTCHA', '请完成人机验证') };
+  if (!serial)  return { error: t('Please enter APIM serial number', '请输入 APIM 序列号') };
+  if (serial.length !== 8) return { error: t('Serial must be 8 characters', '序列号必须是 8 位字符') };
+  if (serial.indexOf('O') >= 0) return { error: t('Serial cannot contain letter O', '序列号不能包含字母 O') };
+  if (apps.length === 0) return { error: t('Please select at least one app', '请至少选择一个应用') };
+  return { token: token };
+}
+
+function startBuild() {
+  hideError();
+  var serial = $('serial').value.trim().toUpperCase();
+  var apps = getSelectedApps();
+
+  var check = validateInput(serial, apps);
+  if (check.error) { showError(check.error); return; }
+
+  var btn = $('build-btn');
+  btn.disabled = true;
+  btn.textContent = t('Building...', '构建中...');
+
+  // Switch to status view
+  showStatus();
+  $('action-bar').style.display = 'none';
+  $('download-link').style.display = 'none';
+  $('again-btn').style.display = 'none';
+  $('log-toggle').style.display = 'none';
+  $('log-area').textContent = '';
+  $('log-area').style.display = 'none';
+  resetSteps();
+  setBanner('building', t('Submitting build request...', '正在提交构建请求...'));
+
+  fetch('/build', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ serial: serial, apps: apps, turnstile_token: check.token })
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(data) {
+    if (data.error) {
+      btn.disabled = false;
+      btn.textContent = t('Build Package', '构建安装包');
+      showConfig();
+      showError(data.error);
+      return;
+    }
+    pollStatus(data.job_id);
+  })
+  .catch(function(err) {
+    btn.disabled = false;
+    btn.textContent = t('Build Package', '构建安装包');
+    showConfig();
+    showError('Request failed: ' + err);
+  });
+}
+
+function pollStatus(jobId) {
+  pollTimer = setInterval(function() {
+    fetch('/status/' + jobId)
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        var logText = data.log || '';
+        var logArea = $('log-area');
+        var logToggle = $('log-toggle');
+        var btn = $('build-btn');
+
+        logArea.textContent = logText;
+        updateSteps(logText);
+        if (logText) {
+          $('action-bar').style.display = 'flex';
+          logToggle.style.display = '';
+        }
+
+        if (data.status === 'done') {
+          clearInterval(pollTimer);
+          btn.disabled = false;
+          btn.textContent = t('Build Package', '构建安装包');
+          setBanner('done', '&#x2713; ' + t('Build complete! Download started automatically.', '构建完成！下载已自动开始。'));
+          $('action-bar').style.display = 'flex';
+          $('download-link').style.display = '';
+          $('download-link').href = '/download/' + jobId;
+          $('again-btn').style.display = '';
+          logToggle.style.display = '';
+          window.location.href = '/download/' + jobId;
+        } else if (data.status === 'failed') {
+          clearInterval(pollTimer);
+          btn.disabled = false;
+          btn.textContent = t('Build Package', '构建安装包');
+          setBanner('failed', '&#x2717; ' + t('Build failed: ', '构建失败：') + data.message);
+          $('action-bar').style.display = 'flex';
+          $('download-link').style.display = 'none';
+          $('again-btn').style.display = '';
+          logToggle.style.display = '';
+          showLog(true);
+        } else {
+          setBanner('building', t('Building... ', '正在构建... ') + data.message);
+        }
+
+        logArea.scrollTop = logArea.scrollHeight;
+      });
+  }, 2000);
+}
+</script>
+
+</body>
+</html>

@@ -1,0 +1,21 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Build artifacts
+builds/
+builder.log
+web_output/
+SyncExtPack_*.zip
+
+# Environment binaries (too large for git)
+environment/
+
+# Legacy binaries
+crypto_pack
+crypto_pack.exe
+crypto_pack_old.exe
+
+# Node
+node_modules/
